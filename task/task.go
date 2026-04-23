@@ -1,20 +1,21 @@
 package task
 
-import {
+import (
 	"time"
-	"github.com/google/uuid"
+
 	"github.com/docker/go-connections/nat"
-}
+	"github.com/google/uuid"
+)
 
 type State int
 
-const {
+const (
 	Pending State = iota
 	Scheduled
 	Running
 	Completed
 	Failed
-}
+)
 
 type Task struct {
 	ID            uuid.UUID

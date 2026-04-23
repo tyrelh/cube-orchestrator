@@ -1,12 +1,13 @@
 package worker
 
-import {
+import (
 	"fmt"
-	"github.com/google/uuid"
+
 	"github.com/golang-collections/collections/queue"
+	"github.com/google/uuid"
 
 	"cube/task"
-}
+)
 
 type Worker struct {
 	Name      string
