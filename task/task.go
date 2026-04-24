@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	// needed to modify docker imports from github.com/docker/docker to github.com/moby/moby
+	// book note: needed to modify docker imports from github.com/docker/docker to github.com/moby/moby
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
@@ -34,7 +34,7 @@ type Task struct {
 	Image  string
 	Memory int
 	Disk   int
-	// needed to modify nat.PortSet to network.PortSet
+	// book note: needed to modify nat.PortSet to network.PortSet
 	ExposedPorts  network.PortSet
 	PortBindings  map[string]string
 	RestartPolicy string
@@ -54,7 +54,7 @@ type Config struct {
 	AttachStdin  bool
 	AttachStdout bool
 	AttachStderr bool
-	// needed to modify nat.PortSet to network.PortSet
+	// book note: needed to modify nat.PortSet to network.PortSet
 	ExposedPorts network.PortSet
 	Cmd          []string
 	Image        string
@@ -62,7 +62,7 @@ type Config struct {
 	Memory       int64
 	Disk         int64
 	Env          []string
-	// needed to modify RestartPolicy from a string to container.RestartPolicyMode
+	// book note: needed to modify RestartPolicy from a string to container.RestartPolicyMode
 	RestartPolicy container.RestartPolicyMode
 }
 
@@ -80,7 +80,7 @@ type DockerResult struct {
 
 func (d *Docker) Run() DockerResult {
 	ctx := context.Background()
-	// needed to modify types.ImagePullOptions to client.ImagePullOptions
+	// book note: needed to modify types.ImagePullOptions to client.ImagePullOptions
 	reader, err := d.Client.ImagePull(ctx, d.Config.Image, client.ImagePullOptions{})
 	if err != nil {
 		log.Printf("Error pulling image %s: %v\n", d.Config.Image, err)
@@ -104,7 +104,7 @@ func (d *Docker) Run() DockerResult {
 	hostConfig := container.HostConfig{
 		RestartPolicy:   restartPolicy,
 		Resources:       resources,
-		PublishAllPorts: true, // automaticall map internal ports to host ports
+		PublishAllPorts: true, // automatically map internal ports to host ports
 	}
 
 	resp, err := d.Client.ContainerCreate(ctx, client.ContainerCreateOptions{
@@ -120,14 +120,14 @@ func (d *Docker) Run() DockerResult {
 		return DockerResult{Error: err}
 	}
 
-	// needed to ignore client.ContainerStartResult return. Maybe act on it?
+	// book note: needed to ignore client.ContainerStartResult return. Maybe act on it?
 	_, err = d.Client.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
 	if err != nil {
 		log.Printf("Error starting container %s: %v\n", resp.ID, err)
 		return DockerResult{Error: err}
 	}
 
-	// commented this out for now as d.Config.Runtime doesn't exist
+	// book note: commented this out for now as d.Config.Runtime doesn't exist
 	// d.Config.Runtime.ContainerID = resp.ID
 
 	out, err := d.Client.ContainerLogs(
@@ -150,5 +150,40 @@ func (d *Docker) Run() DockerResult {
 		Action:      "start",
 		Result:      "success",
 	}
+}
 
+func (d *Docker) Stop(id string) DockerResult {
+	log.Printf("Attempting to stop container %s\n", id)
+	ctx := context.Background()
+	// book note: needed to ignore client.ContainerStopResult return. Maybe act on it?
+	_, err := d.Client.ContainerStop(
+		ctx,
+		id,
+		client.ContainerStopOptions{},
+	)
+	if err != nil {
+		log.Printf("Error stopping container %s: %v\n", id, err)
+		return DockerResult{Error: err}
+	}
+
+	// book note: needed to ignore client.ContainerRemoveResult return. Maybe act on it?
+	_, err = d.Client.ContainerRemove(
+		ctx,
+		id,
+		client.ContainerRemoveOptions{
+			RemoveVolumes: true,
+			RemoveLinks:   false,
+			Force:         false,
+		},
+	)
+	if err != nil {
+		log.Printf("Error removing container %s: %v\n", id, err)
+		return DockerResult{Error: err}
+	}
+
+	return DockerResult{
+		Action: "stop",
+		Result: "success",
+		Error:  nil,
+	}
 }
