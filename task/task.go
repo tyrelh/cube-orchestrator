@@ -113,7 +113,7 @@ func (d *Docker) Run() DockerResult {
 		NetworkingConfig: nil,
 		Platform:         nil,
 		Name:             d.Config.Name,
-		Image:            d.Config.Image,
+		// book note: removed Image: d.Config.Image since it's already set in the container.Config
 	})
 	if err != nil {
 		log.Printf("Error creating container using image %s: %v\n", d.Config.Image, err)
