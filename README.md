@@ -14,8 +14,28 @@ go mod install
 
 ## Run
 
-To run the test code in main:
+To run the service and API:
 
 ```bash
-go run .
+CUBE_HOST=localhost CUBE_PORT=5555 go run .
+```
+
+## Sample API requests
+
+List tasks
+```bash
+curl -v localhost:5555/tasks
+```
+
+Create task
+```bash
+curl -v --request POST \
+    --header 'Content-Type: application/json' \
+    --data '{"ID":"266592cd-960d-4091-981c-8c25c44b1018","State":2,"Task":{"State":1,"ID":"266592cd-960d-4091-981c-8c25c44b1018","Name":"test-chapter-5-1","Image":"strm/helloworld-http"}}' \
+    localhost:5555/tasks
+```
+
+Delete task
+```bash
+curl -v --request DELETE "localhost:5555/tasks/266592cd-960d-4091-981c-8c25c44b1018"
 ```
