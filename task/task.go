@@ -107,6 +107,7 @@ func (d *Docker) Run() DockerResult {
 		PublishAllPorts: true, // automatically map internal ports to host ports
 	}
 
+	log.Printf("Creating container %s for %s", d.Config.Name, d.Config.Image)
 	resp, err := d.Client.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config:           &containerConfig,
 		HostConfig:       &hostConfig,
@@ -119,13 +120,16 @@ func (d *Docker) Run() DockerResult {
 		log.Printf("Error creating container using image %s: %v\n", d.Config.Image, err)
 		return DockerResult{Error: err}
 	}
+	log.Printf("Created container %s", resp.ID)
 
+	log.Printf("Starting container %s", resp.ID)
 	// book note: needed to ignore client.ContainerStartResult return. Maybe act on it?
 	_, err = d.Client.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
 	if err != nil {
 		log.Printf("Error starting container %s: %v\n", resp.ID, err)
 		return DockerResult{Error: err}
 	}
+	log.Printf("Started container %s", resp.ID)
 
 	// book note: commented this out for now as d.Config.Runtime doesn't exist
 	// d.Config.Runtime.ContainerID = resp.ID
