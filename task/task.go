@@ -17,27 +17,19 @@ import (
 	"github.com/moby/moby/client"
 )
 
-type State int
-
-const (
-	Pending State = iota
-	Scheduled
-	Running
-	Completed
-	Failed
-)
-
 type Task struct {
-	ID     uuid.UUID
-	Name   string
-	State  State
-	Image  string
-	Memory int
-	Disk   int
+	ID          uuid.UUID
+	ContainerID string
+	Name        string
+	State       State
+	Image       string
+	Cpu         float64
+	Memory      int64
+	Disk        int64
 	// book note: needed to modify nat.PortSet to network.PortSet
 	ExposedPorts  network.PortSet
 	PortBindings  map[string]string
-	RestartPolicy string
+	RestartPolicy container.RestartPolicyMode
 	StartTime     time.Time
 	FinishTime    time.Time
 }
@@ -66,9 +58,31 @@ type Config struct {
 	RestartPolicy container.RestartPolicyMode
 }
 
+// book note: needed to implement NewConfig
+func NewConfig(t *Task) *Config {
+	return &Config{
+		Name:          t.Name,
+		ExposedPorts:  t.ExposedPorts,
+		Image:         t.Image,
+		Cpu:           t.Cpu,
+		Memory:        t.Memory,
+		Disk:          t.Disk,
+		RestartPolicy: t.RestartPolicy,
+	}
+}
+
 type Docker struct {
 	Client *client.Client
 	Config Config
+}
+
+// book note: needed to implement NewDocker
+func NewDocker(config *Config) *Docker {
+	dockerClient, _ := client.New(client.FromEnv, client.WithAPIVersionNegotiation())
+	return &Docker{
+		Client: dockerClient,
+		Config: *config,
+	}
 }
 
 type DockerResult struct {
