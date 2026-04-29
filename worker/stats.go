@@ -3,35 +3,39 @@ package worker
 import (
 	"log"
 
-	"github.com/c9s/goprocinfo/linux"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/load"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type Stats struct {
-	MemStats  *linux.MemInfo
-	DiskStats *linux.Disk
-	CpuStats  *linux.CPUStat
-	LoadStats *linux.LoadAvg
+	MemStats  *mem.VirtualMemoryStat
+	DiskStats *disk.UsageStat
+	CpuStats  *cpu.TimesStat
+	LoadStats *load.AvgStat
 	TaskCount int
 }
 
+// gopsutil reports memory in bytes; book API was in KB so we convert here.
 func (s *Stats) MemTotalKb() uint64 {
-	return s.MemStats.MemTotal
+	return s.MemStats.Total / 1024
 }
 
 func (s *Stats) MemAvailableKb() uint64 {
-	return s.MemStats.MemAvailable
+	return s.MemStats.Available / 1024
 }
 
 func (s *Stats) MemUsedKb() uint64 {
-	return s.MemStats.MemTotal - s.MemStats.MemAvailable
+	return s.MemStats.Used / 1024
 }
 
-func (s *Stats) MemUsedPercent() uint64 {
-	return s.MemStats.MemAvailable / s.MemStats.MemTotal
+func (s *Stats) MemUsedPercent() float64 {
+	return s.MemStats.UsedPercent
 }
 
 func (s *Stats) DiskTotal() uint64 {
-	return s.DiskStats.All
+	return s.DiskStats.Total
 }
 
 func (s *Stats) DiskFree() uint64 {
@@ -43,13 +47,13 @@ func (s *Stats) DiskUsed() uint64 {
 }
 
 func (s *Stats) CpuUsage() float64 {
-	idle := s.CpuStats.Idle + s.CpuStats.IOWait
-	nonIdle := s.CpuStats.User + s.CpuStats.Nice + s.CpuStats.System + s.CpuStats.IRQ + s.CpuStats.User + s.CpuStats.SoftIRQ + s.CpuStats.Steal
+	idle := s.CpuStats.Idle + s.CpuStats.Iowait
+	nonIdle := s.CpuStats.User + s.CpuStats.Nice + s.CpuStats.System + s.CpuStats.Irq + s.CpuStats.Guest + s.CpuStats.Softirq + s.CpuStats.Steal
 	total := idle + nonIdle
 	if total == 0 {
 		return 0.00
 	}
-	return (float64(total) - float64(idle)) / float64(total)
+	return (total - idle) / total
 }
 
 func GetStats() *Stats {
@@ -61,43 +65,42 @@ func GetStats() *Stats {
 	}
 }
 
-func GetMemoryInfo() *linux.MemInfo {
-	memstats, err := linux.ReadMemInfo("/proc/meminfo")
+// GetMemoryInfo See https://pkg.go.dev/github.com/shirou/gopsutil/v3/mem#VirtualMemoryStat
+func GetMemoryInfo() *mem.VirtualMemoryStat {
+	v, err := mem.VirtualMemory()
 	if err != nil {
-		log.Printf("Error reading from /proc/meminfo")
-		return &linux.MemInfo{}
+		log.Printf("Error reading memory info: %v", err)
+		return &mem.VirtualMemoryStat{}
 	}
-	return memstats
+	return v
 }
 
-// GetDiskInfo See https://godoc.org/github.com/c9s/goprocinfo/linux#Disk
-func GetDiskInfo() *linux.Disk {
-	diskstats, err := linux.ReadDisk("/")
+// GetDiskInfo See https://pkg.go.dev/github.com/shirou/gopsutil/v3/disk#UsageStat
+func GetDiskInfo() *disk.UsageStat {
+	d, err := disk.Usage("/")
 	if err != nil {
-		log.Printf("Error reading from /")
-		return &linux.Disk{}
+		log.Printf("Error reading disk info: %v", err)
+		return &disk.UsageStat{}
 	}
-	return diskstats
+	return d
 }
 
-// GetCpuInfo See https://godoc.org/github.com/c9s/goprocinfo/linux#CPUStat
-func GetCpuInfo() *linux.CPUStat {
-	cpustats, err := linux.ReadStat("/proc/stat")
-	if err != nil {
-		log.Printf("Error reading from /proc/stat")
-		return &linux.CPUStat{}
+// GetCpuInfo See https://pkg.go.dev/github.com/shirou/gopsutil/v3/cpu#TimesStat
+func GetCpuInfo() *cpu.TimesStat {
+	times, err := cpu.Times(false)
+	if err != nil || len(times) == 0 {
+		log.Printf("Error reading CPU info: %v", err)
+		return &cpu.TimesStat{}
 	}
-	return &cpustats.CPUStatAll
+	return &times[0]
 }
 
-// GetLoadAvg See https://godoc.org/github.com/c9s/goprocinfo/linux#LoadAvg
-func GetLoadAvg() *linux.LoadAvg {
-	loadavg, err := linux.ReadLoadAvg("/proc/loadavg")
+// GetLoadAvg See https://pkg.go.dev/github.com/shirou/gopsutil/v3/load#AvgStat
+func GetLoadAvg() *load.AvgStat {
+	l, err := load.Avg()
 	if err != nil {
-		log.Printf("Error reading from /proc/loadavg")
-		return &linux.LoadAvg{}
+		log.Printf("Error reading load avg: %v", err)
+		return &load.AvgStat{}
 	}
-	return loadavg
+	return l
 }
-
-// Jules
