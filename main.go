@@ -28,12 +28,12 @@ func main() {
 		Worker:  &w,
 	}
 
-	go runTasks(&w)
-	go w.CollectStats()
+	go runTasks(&w, 10*time.Second)
+	go w.CollectStats(15 * time.Second)
 	api.Start()
 }
 
-func runTasks(w *worker.Worker) {
+func runTasks(w *worker.Worker, d time.Duration) {
 	for {
 		if w.Queue.Len() != 0 {
 			result := w.RunTask()
@@ -43,7 +43,7 @@ func runTasks(w *worker.Worker) {
 		} else {
 			log.Println("No tasks to proccess currently")
 		}
-		log.Println("Sleeping for 10 seconds")
-		time.Sleep(10 * time.Second)
+		log.Printf("Sleeping for %v\n", d)
+		time.Sleep(d)
 	}
 }

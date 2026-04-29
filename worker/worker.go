@@ -20,12 +20,12 @@ type Worker struct {
 	Stats     *Stats
 }
 
-func (w *Worker) CollectStats() {
+func (w *Worker) CollectStats(d time.Duration) {
 	for {
 		log.Println("Collecting stats")
 		w.Stats = GetStats()
 		w.Stats.TaskCount = w.TaskCount
-		time.Sleep(15 * time.Second)
+		time.Sleep(d)
 	}
 }
 
