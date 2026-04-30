@@ -17,30 +17,34 @@ go mod install
 To run the service and API:
 
 ```bash
-CUBE_HOST=localhost CUBE_PORT=5555 go run .
+CUBE_WORKER_HOST=localhost \
+CUBE_WORKER_PORT=5556 \
+CUBE_MANAGER_HOST=localhost \
+CUBE_MANAGER_PORT=5555 \
+go run .
 ```
 
 ## Sample API requests
 
 List tasks
 ```bash
-curl -v localhost:5555/tasks
+curl -s localhost:5555/tasks | jq
 ```
 
 Create task
 ```bash
-curl -v --request POST \
+curl -s --request POST \
     --header 'Content-Type: application/json' \
     --data '{"ID":"266592cd-960d-4091-981c-8c25c44b1018","State":2,"Task":{"State":1,"ID":"266592cd-960d-4091-981c-8c25c44b1018","Name":"test-chapter-5-1","Image":"strm/helloworld-http"}}' \
-    localhost:5555/tasks
+    localhost:5555/tasks | jq
 ```
 
 Delete task
 ```bash
-curl -v --request DELETE "localhost:5555/tasks/266592cd-960d-4091-981c-8c25c44b1018"
+curl -s --request DELETE "localhost:5555/tasks/266592cd-960d-4091-981c-8c25c44b1018" | jq
 ```
 
 Get stats
 ```bash
-curl -v localhost:5555/stats
+curl -s localhost:5555/stats | jq
 ```

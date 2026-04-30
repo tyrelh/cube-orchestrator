@@ -22,7 +22,7 @@ type Worker struct {
 
 func (w *Worker) CollectStats(d time.Duration) {
 	for {
-		log.Println("Collecting stats")
+		log.Println("[Worker] Collecting stats")
 		w.Stats = GetStats()
 		w.Stats.TaskCount = w.TaskCount
 		time.Sleep(d)
@@ -41,10 +41,10 @@ func (w *Worker) AddTask(t task.Task) {
 	w.Queue.Enqueue(t)
 }
 
-func (w *Worker) RunTask() task.DockerResult {
+func (w *Worker) runTask() task.DockerResult {
 	t := w.Queue.Dequeue()
 	if t == nil {
-		log.Println("No tasks in the queue")
+		log.Println("[Worker] No tasks in the queue")
 		return task.DockerResult{Error: nil}
 	}
 	taskQueued := t.(task.Task)
@@ -62,10 +62,10 @@ func (w *Worker) RunTask() task.DockerResult {
 		case task.Completed:
 			result = w.StopTask(taskQueued)
 		default:
-			result.Error = errors.New("We should not get here")
+			result.Error = errors.New("[Worker] We should not get here")
 		}
 	} else {
-		result.Error = fmt.Errorf("Invalid transition from %v to %v", taskPersisted.State, taskQueued.State)
+		result.Error = fmt.Errorf("[Worker] Invalid transition from %v to %v", taskPersisted.State, taskQueued.State)
 	}
 	return result
 }
@@ -76,7 +76,7 @@ func (w *Worker) StartTask(t task.Task) task.DockerResult {
 	docker := task.NewDocker(config)
 	result := docker.Run()
 	if result.Error != nil {
-		log.Printf("Error running task %v: %v\n", t.ID, result.Error)
+		log.Printf("[Worker] Error running task %v: %v\n", t.ID, result.Error)
 		t.State = task.Failed
 		w.Db[t.ID] = &t
 		return result
@@ -93,13 +93,28 @@ func (w *Worker) StopTask(t task.Task) task.DockerResult {
 
 	result := docker.Stop(t.ContainerID)
 	if result.Error != nil {
-		log.Printf("Error stopping container %s: %v\n", t.ContainerID, result.Error)
+		log.Printf("[Worker] Error stopping container %s: %v\n", t.ContainerID, result.Error)
 		// book note: added missing return
 		return task.DockerResult{Error: result.Error}
 	}
 	t.FinishTime = time.Now().UTC()
 	t.State = task.Completed
 	w.Db[t.ID] = &t
-	log.Printf("Stopped and removed container %s for task %v\n", t.ContainerID, t.ID)
+	log.Printf("[Worker] Stopped and removed container %s for task %v\n", t.ContainerID, t.ID)
 	return result
+}
+
+func (w *Worker) RunTasks(d time.Duration) {
+	for {
+		if w.Queue.Len() != 0 {
+			result := w.runTask()
+			if result.Error != nil {
+				log.Printf("[Worker] Error running task: %v\n", result.Error)
+			}
+		} else {
+			log.Println("[Worker] No tasks to proccess currently")
+		}
+		log.Printf("[Worker] Sleeping for %v\n", d)
+		time.Sleep(d)
+	}
 }
