@@ -14,10 +14,10 @@ import (
 )
 
 func main() {
+
+	fmt.Println("Starting Cube worker(s)")
 	host := os.Getenv("CUBE_HOST")
 	port, _ := strconv.Atoi(os.Getenv("CUBE_PORT"))
-
-	fmt.Println("Starting Cube worker")
 	w := worker.Worker{
 		Queue: *queue.New(),
 		Db:    make(map[uuid.UUID]*task.Task),
@@ -27,10 +27,11 @@ func main() {
 		Port:    port,
 		Worker:  &w,
 	}
+	workers := []string{fmt.Sprintf("%s:%d", host, port)}
 
 	go runTasks(&w, 10*time.Second)
 	go w.CollectStats(15 * time.Second)
-	api.Start()
+	go api.Start()
 }
 
 func runTasks(w *worker.Worker, d time.Duration) {
