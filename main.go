@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cube/manager"
 	"cube/task"
 	"cube/worker"
 	"fmt"
@@ -32,6 +33,41 @@ func main() {
 	go runTasks(&w, 10*time.Second)
 	go w.CollectStats(15 * time.Second)
 	go api.Start()
+
+	fmt.Println("Starting Cube manager")
+	m := manager.New(workers)
+
+	fmt.Println("Creating tasks")
+	for i := range 3 {
+		t := task.Task{
+			ID:    uuid.New(),
+			Name:  fmt.Sprintf("test-container-%d", i),
+			State: task.Scheduled,
+			Image: "strm/helloworld-http",
+		}
+		te := task.TaskEvent{
+			ID:    uuid.New(),
+			State: task.Running,
+			Task:  t,
+		}
+		m.AddTask(te)
+		m.SendWork()
+	}
+
+	go func() {
+		for {
+			log.Printf("[Manager] Updating tasks from %d workers\n", len(m.Workers))
+			m.UpdateTasks()
+			time.Sleep(15 * time.Second)
+		}
+	}()
+
+	for {
+		for _, t := range m.TaskDb {
+			log.Printf("[Manager] Task: id: %s, state: %d\n", t.ID.String(), t.State)
+			time.Sleep(10 * time.Second)
+		}
+	}
 }
 
 func runTasks(w *worker.Worker, d time.Duration) {
