@@ -23,6 +23,10 @@ type Manager struct {
 	LastWorker    int
 }
 
+func (m *Manager) AddTask(te task.TaskEvent) {
+	m.Pending.Enqueue(te)
+}
+
 func (m *Manager) SelectWorker() string {
 	m.LastWorker = (m.LastWorker + 1) % len(m.Workers)
 	return m.Workers[m.LastWorker]
