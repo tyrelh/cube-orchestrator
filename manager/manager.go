@@ -29,7 +29,40 @@ func (m *Manager) SelectWorker() string {
 }
 
 func (m *Manager) UpdateTasks() {
-	fmt.Println("I will update tasks")
+	for _, worker := range m.Workers {
+		log.Printf("Checking worker %s for task updates", worker)
+		url := fmt.Sprintf("http://%s/tasks", worker)
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Printf("Error connecting to %s: %v\n", worker, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("Error sending request: %d\n", resp.StatusCode)
+		}
+
+		d := json.NewDecoder(resp.Body)
+		var tasks []*task.Task
+		err = d.Decode(&tasks)
+		if err != nil {
+			log.Printf("Error unmarshalling tasks: %v\n", err)
+		}
+
+		for _, t := range tasks {
+			log.Printf("Attempting to update task %v\n", t.ID)
+			_, found := m.TaskDb[t.ID.String()]
+			if !found {
+				log.Printf("Task with ID %s not found\n", t.ID.String())
+				return
+			}
+
+			m.TaskDb[t.ID.String()].State = t.State
+			m.TaskDb[t.ID.String()].StartTime = t.StartTime
+			m.TaskDb[t.ID.String()].FinishTime = t.FinishTime
+			m.TaskDb[t.ID.String()].ContainerID = t.ContainerID
+
+		}
+	}
 }
 
 func (m *Manager) SendWork() {
