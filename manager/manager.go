@@ -118,3 +118,21 @@ func (m *Manager) SendWork() {
 		log.Println("No work in the queue")
 	}
 }
+
+func New(workers []string) *Manager {
+	taskDb := make(map[string]*task.Task)
+	eventDb := make(map[string]*task.TaskEvent)
+	workerTaskMap := make(map[string][]uuid.UUID)
+	taskWorkerMap := make(map[uuid.UUID]string)
+	for worker := range workers {
+		workerTaskMap[workers[worker]] = []uuid.UUID{}
+	}
+	return &Manager{
+		Pending:       *queue.New(),
+		Workers:       workers,
+		TaskDb:        taskDb,
+		EventDb:       eventDb,
+		WorkerTaskMap: workerTaskMap,
+		TaskWorkerMap: taskWorkerMap,
+	}
+}
