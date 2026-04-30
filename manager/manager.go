@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
@@ -32,31 +33,31 @@ func (m *Manager) SelectWorker() string {
 	return m.Workers[m.LastWorker]
 }
 
-func (m *Manager) UpdateTasks() {
+func (m *Manager) updateTasks() {
 	for _, worker := range m.Workers {
-		log.Printf("Checking worker %s for task updates", worker)
+		log.Printf("[Manager] Checking worker %s for task updates", worker)
 		url := fmt.Sprintf("http://%s/tasks", worker)
 		resp, err := http.Get(url)
 		if err != nil {
-			log.Printf("Error connecting to %s: %v\n", worker, err)
+			log.Printf("[Manager] Error connecting to %s: %v\n", worker, err)
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("Error sending request: %d\n", resp.StatusCode)
+			log.Printf("[Manager] Error sending request: %d\n", resp.StatusCode)
 		}
 
 		d := json.NewDecoder(resp.Body)
 		var tasks []*task.Task
 		err = d.Decode(&tasks)
 		if err != nil {
-			log.Printf("Error unmarshalling tasks: %v\n", err)
+			log.Printf("[Manager] Error unmarshalling tasks: %v\n", err)
 		}
 
 		for _, t := range tasks {
-			log.Printf("Attempting to update task %v\n", t.ID)
+			log.Printf("[Manager] Attempting to update task %v\n", t.ID)
 			_, found := m.TaskDb[t.ID.String()]
 			if !found {
-				log.Printf("Task with ID %s not found\n", t.ID.String())
+				log.Printf("[Manager] Task with ID %s not found\n", t.ID.String())
 				return
 			}
 
@@ -69,12 +70,22 @@ func (m *Manager) UpdateTasks() {
 	}
 }
 
+func (m *Manager) UpdateTasks(t time.Duration) {
+	for {
+		log.Println("[Manager] Checking for task updates from workers")
+		m.updateTasks()
+		log.Println("[Manager] Task updates completed")
+		log.Println("[Manager] Sleeping for 15 seconds")
+		time.Sleep(t)
+	}
+}
+
 func (m *Manager) SendWork() {
 	if m.Pending.Len() > 0 {
 		w := m.SelectWorker()
 		e := m.Pending.Dequeue().(task.TaskEvent)
 		t := e.Task
-		log.Printf("Pulled %v off pending queue\n", t)
+		log.Printf("[Manager] Pulled %v off pending queue\n", t)
 
 		m.EventDb[e.ID.String()] = &e
 		m.WorkerTaskMap[w] = append(m.WorkerTaskMap[w], e.Task.ID)
@@ -85,13 +96,13 @@ func (m *Manager) SendWork() {
 
 		data, err := json.Marshal(e)
 		if err != nil {
-			log.Printf("Unable to marshal task object: %v\n", t)
+			log.Printf("[Manager] Unable to marshal task object: %v\n", t)
 		}
 
 		url := fmt.Sprintf("http://%s/tasks", w)
 		resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
 		if err != nil {
-			log.Printf("Error connecting to %s: %v\n", w, err)
+			log.Printf("[Manager] Error connecting to %s: %v\n", w, err)
 			m.Pending.Enqueue(e)
 			return
 		}
@@ -100,23 +111,40 @@ func (m *Manager) SendWork() {
 			errorResponse := worker.ErrResponse{}
 			err := d.Decode(&errorResponse)
 			if err != nil {
-				log.Printf("Error decoding response: %s\n", err.Error)
+				log.Printf("[Manager] Error decoding response: %s\n", err.Error)
 				return
 			}
-			log.Printf("Response error (%d): %v\n", errorResponse.HTTPStatusCode, errorResponse.Message)
+			log.Printf("[Manager] Response error (%d): %v\n", errorResponse.HTTPStatusCode, errorResponse.Message)
 			return
 		}
 
 		t = task.Task{}
 		err = d.Decode(&t)
 		if err != nil {
-			log.Printf("Error decoding response: %s\n", err.Error)
+			log.Printf("[Manager] Error decoding response: %s\n", err.Error)
 			return
 		}
-		log.Printf("%#v\n", t)
+		// log.Printf("%#v\n", t)
 	} else {
-		log.Println("No work in the queue")
+		log.Println("[Manager] No work in the queue")
 	}
+}
+
+func (m *Manager) ProcessTasks(t time.Duration) {
+	for {
+		log.Println("[Manager] Processing any tasks in the queue")
+		m.SendWork()
+		log.Println("[Manager] Sleeping for 10 seconds")
+		time.Sleep(t)
+	}
+}
+
+func (m *Manager) GetTasks() []*task.Task {
+	tasks := []*task.Task{}
+	for _, t := range m.TaskDb {
+		tasks = append(tasks, t)
+	}
+	return tasks
 }
 
 func New(workers []string) *Manager {

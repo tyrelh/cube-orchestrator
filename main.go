@@ -15,72 +15,34 @@ import (
 )
 
 func main() {
+	wHost := os.Getenv("CUBE_WORKER_HOST")
+	wPort, _ := strconv.Atoi(os.Getenv("CUBE_WORKER_PORT"))
+	mHost := os.Getenv("CUBE_MANAGER_HOST")
+	mPort, _ := strconv.Atoi(os.Getenv("CUBE_MANAGER_PORT"))
 
-	fmt.Println("Starting Cube worker(s)")
-	host := os.Getenv("CUBE_HOST")
-	port, _ := strconv.Atoi(os.Getenv("CUBE_PORT"))
+	log.Println("Starting Cube worker(s)")
 	w := worker.Worker{
 		Queue: *queue.New(),
 		Db:    make(map[uuid.UUID]*task.Task),
 	}
-	api := worker.Api{
-		Address: host,
-		Port:    port,
+	wApi := worker.Api{
+		Address: wHost,
+		Port:    wPort,
 		Worker:  &w,
 	}
-	workers := []string{fmt.Sprintf("%s:%d", host, port)}
+	go w.RunTasks(15 * time.Second)
+	go w.CollectStats(14 * time.Second)
+	go wApi.Start()
 
-	go runTasks(&w, 10*time.Second)
-	go w.CollectStats(15 * time.Second)
-	go api.Start()
-
-	fmt.Println("Starting Cube manager")
+	log.Println("Starting Cube manager")
+	workers := []string{fmt.Sprintf("%s:%d", wHost, wPort)}
 	m := manager.New(workers)
-
-	fmt.Println("Creating tasks")
-	for i := range 3 {
-		t := task.Task{
-			ID:    uuid.New(),
-			Name:  fmt.Sprintf("test-container-%d", i),
-			State: task.Scheduled,
-			Image: "strm/helloworld-http",
-		}
-		te := task.TaskEvent{
-			ID:    uuid.New(),
-			State: task.Running,
-			Task:  t,
-		}
-		m.AddTask(te)
-		m.SendWork()
+	mApi := manager.Api{
+		Address: mHost,
+		Port:    mPort,
+		Manager: m,
 	}
-
-	go func() {
-		for {
-			log.Printf("[Manager] Updating tasks from %d workers\n", len(m.Workers))
-			m.UpdateTasks()
-			time.Sleep(15 * time.Second)
-		}
-	}()
-
-	for {
-		for _, t := range m.TaskDb {
-			log.Printf("[Manager] Task: id: %s, state: %d\n", t.ID.String(), t.State)
-			time.Sleep(10 * time.Second)
-		}
-	}
-}
-
-func runTasks(w *worker.Worker, d time.Duration) {
-	for {
-		if w.Queue.Len() != 0 {
-			result := w.RunTask()
-			if result.Error != nil {
-				log.Printf("Error running task: %v\n", result.Error)
-			}
-		} else {
-			log.Println("No tasks to proccess currently")
-		}
-		log.Printf("Sleeping for %v\n", d)
-		time.Sleep(d)
-	}
+	go m.ProcessTasks(13 * time.Second)
+	go m.UpdateTasks(12 * time.Second)
+	mApi.Start()
 }
