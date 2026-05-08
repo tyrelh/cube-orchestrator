@@ -270,11 +270,3 @@ func (m *Manager) DoHealthChecks(duration time.Duration) {
 		time.Sleep(duration)
 	}
 }
-
-func (m *Manager) GetTasks() []*task.Task {
-	tasks := make([]*task.Task, 0)
-
-	for _, t := range m.TaskDb {
-		if t.State == task.Running || t.State")
-	}
-}
