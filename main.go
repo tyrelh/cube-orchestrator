@@ -32,6 +32,7 @@ func main() {
 	}
 	go w.RunTasks(15 * time.Second)
 	go w.CollectStats(14 * time.Second)
+	go w.UpdateTasks(13 * time.Second)
 	go wApi.Start()
 
 	log.Println("Starting Cube manager")
@@ -44,5 +45,6 @@ func main() {
 	}
 	go m.ProcessTasks(13 * time.Second)
 	go m.UpdateTasks(12 * time.Second)
+	go m.DoHealthChecks(11 * time.Second)
 	mApi.Start()
 }
