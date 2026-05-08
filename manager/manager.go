@@ -173,6 +173,11 @@ func (m *Manager) checkTaskHealth(t task.Task) error {
 
 	w := m.TaskWorkerMap[t.ID]
 	hostPort := getHostPort(t.HostPorts)
+	if hostPort == nil {
+		msg := fmt.Sprintf("No host port available for task %s, skipping health check", t.ID)
+		log.Println(msg)
+		return errors.New(msg)
+	}
 	worker := strings.Split(w, ":")
 	url := fmt.Sprintf("http://%s:%s%s", worker[0], *hostPort, t.HealthCheck)
 	log.Printf("[Manager] Calling health check for task %s: %s\n", t.ID, url)
