@@ -154,7 +154,7 @@ func (w *Worker) updateTasks() {
 			}
 
 			// Error: cannot use resp.Container.NetworkSettings.Ports (variable of map type network.PortMap) as network.PortSet value in assignment
-			// w.Db[id].ExposedPorts = resp.Container.NetworkSettings.Ports
+			w.Db[id].HostPorts = resp.Container.NetworkSettings.Ports
 		}
 	}
 }
