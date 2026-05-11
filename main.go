@@ -21,7 +21,7 @@ func main() {
 	}
 	wPortStr := os.Getenv("CUBE_WORKER_PORT")
 	if wPortStr == "" {
-		wPortStr = "5555"
+		wPortStr = "5556"
 	}
 	wPort, _ := strconv.Atoi(wPortStr)
 
@@ -31,7 +31,7 @@ func main() {
 	}
 	mPortStr := os.Getenv("CUBE_MANAGER_PORT")
 	if mPortStr == "" {
-		mPortStr = "5556"
+		mPortStr = "5555"
 	}
 	mPort, _ := strconv.Atoi(mPortStr)
 
