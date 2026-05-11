@@ -39,7 +39,7 @@ curl -s --request POST \
     localhost:5555/tasks | jq
 ```
 ```bash
-curl -s -X POST localhost:5555/tasks -d @sample_task.json | jq
+curl -s --request POST localhost:5555/tasks -d @sample_task.json | jq
 ```
 
 Delete task
