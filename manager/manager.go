@@ -61,13 +61,14 @@ func (m *Manager) updateTasks() {
 			_, found := m.TaskDb[t.ID.String()]
 			if !found {
 				log.Printf("[Manager] Task with ID %s not found\n", t.ID.String())
-				return
+				continue
 			}
 
 			m.TaskDb[t.ID.String()].State = t.State
 			m.TaskDb[t.ID.String()].StartTime = t.StartTime
 			m.TaskDb[t.ID.String()].FinishTime = t.FinishTime
 			m.TaskDb[t.ID.String()].ContainerID = t.ContainerID
+			m.TaskDb[t.ID.String()].HostPorts = t.HostPorts
 
 		}
 	}
@@ -121,13 +122,13 @@ func (m *Manager) SendWork() {
 			return
 		}
 
-		t = task.Task{}
-		err = d.Decode(&t)
+		var workerResp task.Task
+		err = d.Decode(&workerResp)
 		if err != nil {
 			log.Printf("[Manager] Error decoding response: %s\n", err.Error)
 			return
 		}
-		// log.Printf("%#v\n", t)
+		log.Printf("[Manager] Worker response for task %s: container %s\n", workerResp.ID, workerResp.ContainerID)
 	} else {
 		log.Println("[Manager] No work in the queue")
 	}
