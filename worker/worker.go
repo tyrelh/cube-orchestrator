@@ -118,3 +118,44 @@ func (w *Worker) RunTasks(d time.Duration) {
 		time.Sleep(d)
 	}
 }
+
+func (w *Worker) InspectTask(t task.Task) task.DockerInspectResponse {
+	config := task.NewConfig(&t)
+	d := task.NewDocker(config)
+	return d.Inspect(t.ContainerID)
+}
+
+func (w *Worker) UpdateTasks(duration time.Duration) {
+	for {
+		log.Println("[Worker] Checking status of tasks")
+		w.updateTasks()
+		log.Println("[Worker] Task updates completed")
+		log.Printf("[Worker] Sleeping for %v seconds\n", duration)
+		time.Sleep(duration)
+	}
+}
+
+func (w *Worker) updateTasks() {
+	for id, t := range w.Db {
+		if t.State == task.Running {
+			resp := w.InspectTask(*t)
+			if resp.Error != nil {
+				log.Printf("[Worker] ERROR: %v\n", resp.Error)
+			}
+
+			if resp.Container == nil {
+				log.Printf("[Worker] No container for running task %s\n", id)
+				w.Db[id].State = task.Failed
+				continue
+			}
+
+			if resp.Container.State.Status == "exited" {
+				log.Printf("Container for task %s is in non-running state %s", id, resp.Container.State.Status)
+				w.Db[id].State = task.Failed
+			}
+
+			// Error: cannot use resp.Container.NetworkSettings.Ports (variable of map type network.PortMap) as network.PortSet value in assignment
+			w.Db[id].HostPorts = resp.Container.NetworkSettings.Ports
+		}
+	}
+}

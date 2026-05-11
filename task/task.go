@@ -32,6 +32,9 @@ type Task struct {
 	RestartPolicy container.RestartPolicyMode
 	StartTime     time.Time
 	FinishTime    time.Time
+	HealthCheck   string
+	RestartCount  int
+	HostPorts     network.PortMap
 }
 
 type TaskEvent struct {
@@ -204,4 +207,20 @@ func (d *Docker) Stop(id string) DockerResult {
 		Result: "success",
 		Error:  nil,
 	}
+}
+
+type DockerInspectResponse struct {
+	Error error
+	// book note: using the nested InspectResponse here instead of the top-level response that includes the raw JSON
+	Container *container.InspectResponse
+}
+
+func (d *Docker) Inspect(containerID string) DockerInspectResponse {
+	ctx := context.Background()
+	resp, err := d.Client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+	if err != nil {
+		log.Printf("Error inspecting container: %s\n", containerID)
+		return DockerInspectResponse{Error: err}
+	}
+	return DockerInspectResponse{Container: &resp.Container}
 }

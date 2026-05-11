@@ -16,9 +16,24 @@ import (
 
 func main() {
 	wHost := os.Getenv("CUBE_WORKER_HOST")
-	wPort, _ := strconv.Atoi(os.Getenv("CUBE_WORKER_PORT"))
+	if wHost == "" {
+		wHost = "localhost"
+	}
+	wPortStr := os.Getenv("CUBE_WORKER_PORT")
+	if wPortStr == "" {
+		wPortStr = "5556"
+	}
+	wPort, _ := strconv.Atoi(wPortStr)
+
 	mHost := os.Getenv("CUBE_MANAGER_HOST")
-	mPort, _ := strconv.Atoi(os.Getenv("CUBE_MANAGER_PORT"))
+	if mHost == "" {
+		mHost = "localhost"
+	}
+	mPortStr := os.Getenv("CUBE_MANAGER_PORT")
+	if mPortStr == "" {
+		mPortStr = "5555"
+	}
+	mPort, _ := strconv.Atoi(mPortStr)
 
 	log.Println("Starting Cube worker(s)")
 	w := worker.Worker{
@@ -32,6 +47,7 @@ func main() {
 	}
 	go w.RunTasks(15 * time.Second)
 	go w.CollectStats(14 * time.Second)
+	go w.UpdateTasks(13 * time.Second)
 	go wApi.Start()
 
 	log.Println("Starting Cube manager")
@@ -44,5 +60,6 @@ func main() {
 	}
 	go m.ProcessTasks(13 * time.Second)
 	go m.UpdateTasks(12 * time.Second)
+	go m.DoHealthChecks(11 * time.Second)
 	mApi.Start()
 }
